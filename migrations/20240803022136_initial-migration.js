@@ -12,7 +12,15 @@ exports.up = async function(knex) {
         })
         .createTable('steps', function(table) {
             table.increments('step_id');
-            table.string('step_instructions')
+            table.string('step_instructions', 256).notNullable();
+            table.integer('step_number').notNullable();
+            table.integer('recipe_id')
+                .unsigned()
+                .notNullable()
+                .references('recipe_id')
+                .inTable('recipes')
+                .onDelete('RESTRICT')
+                .onUpdate('RESTRICT');
         })
         .createTable('step_ingredients', function(table) {
             table.increments();
