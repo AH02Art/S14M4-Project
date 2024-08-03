@@ -2,11 +2,50 @@ const db = require("../../data/db-config.js");
 
 async function getRecipeById(recipe_id) {
     const recipeRows = await db('recipes as r')
-        .where('recipe_id', recipe_id);
+        .leftJoin('steps as s', 'r.recipe_id', 's.recipe_id')
+        .leftJoin('step_ingredients as si', 'si.step_id', 's.step_id')
+        .leftJoin('ingredients as i', 'i.ingredient_id', 'si.ingredient_id')
+        .select(
+            'r.recipe_id',
+            'r.recipe_name',
+            's.step_id',
+            's.step_number',
+            's.step_instructions',
+            'i.ingredient_id',
+            'i.ingredient_name',
+            'si.quantity'
+        )
+        .orderBy(['s.step_number', 'i.ingredient_id'])
+        .where('r.recipe_id', recipe_id);
 
-    return recipeRows;
+    // create a recipe object with steps and their ingredients
+    const recipes = {
+        recipe_id: recipeRows[0]?.recipe_id,
+        recipe_name: recipeRows[0]?.recipe_name,
+        steps: recipeRows.reduce((acc, row) => {
+            // find the step in the accumulator
+            let step = acc.find(step => step.step_id === row.step_id)
+            if (!step) {
+                step = {
+                    step_id: row.step_id,
+                    step_number: row.step_number,
+                    step_instructions: row.step_instructions,
+                    ingredients: []
+                };
+                acc.push(step);
+            }
+            // if there's an ingredient, add it to the step's ingredients array
+            const currentStep = acc.find((step) => step.step_id === row.step_id);
+            currentStep.ingredients.push({
+                ingredient_id: row.ingredient_id,
+                ingredient_name: row.ingredient_name,
+                quantity: row.quantity
+            });
+            return acc;
+        }, [])
+    };
+
+    return recipes;
 };
 
-module.exports =  {
-    getRecipeById
-};
+module.exports =  { getRecipeById };
